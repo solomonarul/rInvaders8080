@@ -4,4 +4,5 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+sdl3 = { version = "0", features = ["build-from-source"]}
 r8080 = { path = "../r8080/" }

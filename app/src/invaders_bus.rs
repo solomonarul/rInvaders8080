@@ -47,7 +47,7 @@ unsafe impl Sync for InvadersBus {}
 impl Bus8080 for InvadersBus
 {
     fn in_b(&mut self, _: &mut Registers, b: u8) -> u8 {
-        println!("[INFO]: Read 0xFF from device {:02X} on EchoBus.", b);
+        println!("[INFO]: Unhandled read, returned 0xFF from device {:02X} on InvadersBus.", b);
         0xFF
     }
 
@@ -55,7 +55,7 @@ impl Bus8080 for InvadersBus
         match b {
             0x6 => { /* TODO: implement watchdog properly, this should suffice for now. */ }
             _ => {
-                println!("[INFO]: Written {:02X} to device {:02X} on EchoBus.", a, b);
+                println!("[INFO]: Unhandled write {:02X} to device {:02X} on InvadersBus.", a, b);
             }
         }
     }

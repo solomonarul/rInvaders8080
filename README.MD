@@ -9,3 +9,10 @@ The main thread handles drawing to the screen and the rest is offset to a separa
 <p align="center">
     <img src=".github/latest.png"/>
 </p>
+
+---
+
+<a href="https://brainmade.org/">
+    Made with <3 by a human.
+    <img src="https://brainmade.org/88x31-light.png" align="right">
+</a>

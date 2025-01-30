@@ -99,21 +99,51 @@ fn main() {
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
                     break 'main
                 },
+                // Coin button.
+                Event::KeyDown { keycode: Some(Keycode::Space), .. } => {
+                    let mut state = input_state.borrow_mut();
+                    state.first |= 0b00000001;
+                },
+                // 1-P buttons.
+                Event::KeyDown { keycode: Some(Keycode::W), .. } => {
+                    let mut state = input_state.borrow_mut();
+                    state.first |= 0b00010000;
+                },
+                Event::KeyUp { keycode: Some(Keycode::W), .. } => {
+                    let mut state = input_state.borrow_mut();
+                    state.first &= 0b11101111;
+                }, 
+                Event::KeyDown { keycode: Some(Keycode::A), .. } => {
+                    let mut state = input_state.borrow_mut();
+                    state.first |= 0b00100000;
+                },
+                Event::KeyUp { keycode: Some(Keycode::A), .. } => {
+                    let mut state = input_state.borrow_mut();
+                    state.first &= 0b11011111;
+                },        
+                Event::KeyDown { keycode: Some(Keycode::D), .. } => {
+                    let mut state = input_state.borrow_mut();
+                    state.first |= 0b01000000;
+                },
+                Event::KeyUp { keycode: Some(Keycode::D), .. } => {
+                    let mut state = input_state.borrow_mut();
+                    state.first &= 0b10111111;
+                },        
                 // 1-P button.
-                Event::KeyDown { keycode: Some(Keycode::K), .. } => {
+                Event::KeyDown { keycode: Some(Keycode::_1), .. } => {
                     let mut state = input_state.borrow_mut();
                     state.first |= 0b00000100;
                 },
-                Event::KeyUp { keycode: Some(Keycode::K), .. } => {
+                Event::KeyUp { keycode: Some(Keycode::_1), .. } => {
                     let mut state = input_state.borrow_mut();
                     state.first &= 0b11111011;
                 },
                 // 2-P button.
-                Event::KeyDown { keycode: Some(Keycode::L), .. } => {
+                Event::KeyDown { keycode: Some(Keycode::_2), .. } => {
                     let mut state = input_state.borrow_mut();
                     state.first |= 0b00000010;
                 },
-                Event::KeyUp { keycode: Some(Keycode::L), .. } => {
+                Event::KeyUp { keycode: Some(Keycode::_2), .. } => {
                     let mut state = input_state.borrow_mut();
                     state.first &= 0b11111101;
                 },

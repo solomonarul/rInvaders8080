@@ -70,7 +70,9 @@ impl Bus8080 for InvadersBus
     fn in_b(&mut self, _: &mut Registers, b: u8) -> u8 {
         match b {
             0x1 => {
-                0b10001000 | self.inputs.borrow().first
+                let value = self.inputs.borrow().first;
+                self.inputs.borrow_mut().first &= 0xFE;
+                0b10001000 | value
             }
             0x2 => {
                 0b00001000 | self.inputs.borrow().second

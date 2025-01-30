@@ -6,8 +6,9 @@ The main thread handles drawing to the screen and the rest is offset to a separa
 
 ## Status:
 
-<p align="center">
-    <img src=".github/latest.png"/>
+<p style="width:100%;display:flex;">
+    <img style="width:50%" src=".github/splash.png"/>
+    <img style="width:50%" src=".github/latest.png"/>
 </p>
 
 ---

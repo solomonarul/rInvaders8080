@@ -1,26 +1,34 @@
+use std::{cell::RefCell, collections::VecDeque, rc::Rc};
+
 use r8080::{cpu::Registers, Bus8080};
+
+pub struct InvadersInputState {
+    pub first: u8,
+    pub second: u8
+}
 
 pub struct InvadersBus
 {
     rom: [u8; 0x2000],
     ram: [u8; 0x400],
-    vram: [u8; 0x1C00]
+    vram: [u8; 0x1C00],
+    shifter: u16,
+    offset: u8,
+    inputs: Rc<RefCell<InvadersInputState>>,
+    interrupts: VecDeque<u8>
 }
 
-#[allow(dead_code)]
 impl InvadersBus
 {
-    pub fn new() -> Self {
+    pub fn new(inputs: Rc<RefCell<InvadersInputState>>) -> Self {
         Self {
             rom: [0x00; 0x2000],
             ram: [0x00; 0x400],
-            vram: [0x00; 0x1C00]
-        }
-    }
-
-    pub fn dump_range(&self, start: u16, end: u16) {
-        for (index, value) in self.ram[start as usize..end as usize].iter().enumerate() {
-            println!("{:04X}: {:02X}", index + start as usize, value)
+            vram: [0x00; 0x1C00],
+            shifter: 0x0000,
+            offset: 0x00,
+            interrupts: VecDeque::new(),
+            inputs
         }
     }
 
@@ -46,14 +54,48 @@ unsafe impl Sync for InvadersBus {}
 
 impl Bus8080 for InvadersBus
 {
+    fn get_interrupt(&mut self) -> u8 {
+        self.interrupts.pop_front().unwrap()
+    }
+
+    fn has_interrupt(&self) -> bool {
+        self.interrupts.front() != None
+    }
+
+    fn push_interrupt(&mut self, b: u8) {
+        self.interrupts.push_back(b);
+    }
+
+    // Refference: https://computerarcheology.com/Arcade/SpaceInvaders/Hardware.html
     fn in_b(&mut self, _: &mut Registers, b: u8) -> u8 {
-        println!("[INFO]: Unhandled read, returned 0xFF from device {:02X} on InvadersBus.", b);
-        0xFF
+        match b {
+            0x1 => {
+                0b10001000 | self.inputs.borrow().first
+            }
+            0x2 => {
+                0b00001000 | self.inputs.borrow().second
+            }
+            0x3 => {
+                ((self.shifter >> (8 - self.offset)) & 0xFF) as u8
+            }
+            0x6 => { /* Watchdog does nothing for us. */ 0xFF }
+            _ => {
+                println!("[INFO]: Unhandled read, returned 0xFF from device {:02X} on InvadersBus.", b);
+                0xFF
+            }
+        }
     }
 
     fn out_b(&mut self, _: &mut Registers, b: u8, a: u8) {
         match b {
-            0x6 => { /* TODO: implement watchdog properly, this should suffice for now. */ }
+            0x2 => {
+                self.offset = b & 0b111;
+            }
+            0x4 => {
+                self.shifter >>= 8;
+                self.shifter |= (a as u16) << 8;
+            }
+            0x6 => { /* Watchdog does nothing for us. */ }
             _ => {
                 println!("[INFO]: Unhandled write {:02X} to device {:02X} on InvadersBus.", a, b);
             }

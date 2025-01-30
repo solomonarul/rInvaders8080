@@ -2,9 +2,9 @@ mod utils;
 mod invaders_bus;
 
 use sdl3::{event::Event, keyboard::Keycode, pixels::Color, rect::Point};
-use std::{sync::{Arc, RwLock}, thread, time::Duration};
+use std::{cell::RefCell, rc::Rc, sync::{Arc, RwLock}, thread, time::Duration};
 
-use invaders_bus::InvadersBus;
+use invaders_bus::{InvadersBus, InvadersInputState};
 use r8080::{cpu::{Interpreter8080, CPU8080}, Bus8080};
 use utils::read_file_to_vec;
 
@@ -19,9 +19,10 @@ fn main() {
 
     let mut canvas = window.into_canvas();
     canvas.set_scale(3.0, 3.0).unwrap();
-    
-    // Read the ROM data into the bus..
-    let mut invaders_bus = Box::new(InvadersBus::new()) as Box<dyn Bus8080>;
+
+    // Read the ROM data into the bus and prepare the inputs.
+    let input_state = Rc::new(RefCell::new(InvadersInputState{ first: 0x00, second: 0x00 }));
+    let mut invaders_bus = Box::new(InvadersBus::new(input_state.clone())) as Box<dyn Bus8080>;
     invaders_bus.write_buffer(0x0000, read_file_to_vec("roms/invaders.h"));
     invaders_bus.write_buffer(0x0800, read_file_to_vec("roms/invaders.g"));
     invaders_bus.write_buffer(0x1000, read_file_to_vec("roms/invaders.f"));
@@ -43,10 +44,11 @@ fn main() {
 
                 if !cpu.is_running() { break; }
             }
+            println!("[INFO]: Emulation thread stopped.");
         }
     });
 
-    // Our app's main loop.
+    // App's main loop.
     let mut event_pump = context.event_pump().unwrap();
     'main: loop {
         // Forcefully quit the app if somehow our emulator finishes running.
@@ -60,11 +62,28 @@ fn main() {
 
         // Draw the output.
         {
-            canvas.set_draw_color(Color::RGB(255, 255, 255));
-            let bus = shared_bus.read().unwrap();
             for x in 0..224 {
+                // Interrupts based on scanline.
+                if x == 95 {
+                    let mut write_bus = shared_bus.write().unwrap();
+                    write_bus.push_interrupt(0xCF);
+                }
+                if x == 223 {
+                    let mut write_bus = shared_bus.write().unwrap();
+                    write_bus.push_interrupt(0xD7);               
+                }
+
+                let bus = shared_bus.read().unwrap();
                 for y in 0..256 {
-                    let pixel = bus.read_b(0x2400 + (x * 256 + (256 - y)) / 8) & (1 << ((x * 256 + (256 - y)) % 8));
+                    // Color based on scanline.
+                    match y {
+                        34..=192 => { canvas.set_draw_color(Color::RGB(245, 100, 100)); }
+                        193..=240 => { canvas.set_draw_color(Color::RGB(100, 245, 100)); }
+                        _ => { canvas.set_draw_color(Color::RGB(225, 225, 245)); }
+                    }
+
+                    let position = x * 256 + (256 - y);
+                    let pixel = bus.read_b(0x2400 + position / 8) & (1 << (position % 8));
                     if pixel != 0 {
                         canvas.draw_point(Point::new(x as i32, y as i32)).unwrap();
                     }
@@ -79,6 +98,24 @@ fn main() {
                 Event::Quit {..} |
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
                     break 'main
+                },
+                // 1-P button.
+                Event::KeyDown { keycode: Some(Keycode::K), .. } => {
+                    let mut state = input_state.borrow_mut();
+                    state.first |= 0b00000100;
+                },
+                Event::KeyUp { keycode: Some(Keycode::K), .. } => {
+                    let mut state = input_state.borrow_mut();
+                    state.first &= 0b11111011;
+                },
+                // 2-P button.
+                Event::KeyDown { keycode: Some(Keycode::L), .. } => {
+                    let mut state = input_state.borrow_mut();
+                    state.first |= 0b00000010;
+                },
+                Event::KeyUp { keycode: Some(Keycode::L), .. } => {
+                    let mut state = input_state.borrow_mut();
+                    state.first &= 0b11111101;
                 },
                 _ => {}
             }

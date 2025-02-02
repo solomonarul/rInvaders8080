@@ -78,7 +78,7 @@ fn main() {
                     // Color based on scanline.
                     match y {
                         34..=192 => { canvas.set_draw_color(Color::RGB(245, 100, 100)); }
-                        193..=240 => { canvas.set_draw_color(Color::RGB(100, 245, 100)); }
+                        193..=235 => { canvas.set_draw_color(Color::RGB(100, 245, 100)); }
                         _ => { canvas.set_draw_color(Color::RGB(225, 225, 245)); }
                     }
 

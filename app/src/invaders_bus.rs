@@ -51,6 +51,7 @@ impl InvadersBus
 }
 
 unsafe impl Sync for InvadersBus {}
+unsafe impl Send for InvadersBus {}
 
 impl Bus8080 for InvadersBus
 {
@@ -58,7 +59,7 @@ impl Bus8080 for InvadersBus
         self.interrupts.pop_front().unwrap()
     }
 
-    fn has_interrupt(&self) -> bool {
+    fn has_interrupt(&self) -> bool {    
         self.interrupts.front() != None
     }
 
@@ -78,11 +79,12 @@ impl Bus8080 for InvadersBus
                 0b00001000 | self.inputs.borrow().second
             }
             0x3 => {
-                ((self.shifter >> (8 - self.offset)) & 0xFF) as u8
+                // TODO: WHY 10??? Display draws wrong otherwise
+                ((self.shifter >> (10 - self.offset)) & 0xFF) as u8
             }
             0x6 => { /* Watchdog does nothing for us. */ 0xFF }
             _ => {
-                println!("[INFO]: Unhandled read, returned 0xFF from device {:02X} on InvadersBus.", b);
+                // println!("[INFO]: Unhandled read, returned 0xFF from device {:02X} on InvadersBus.", b);
                 0xFF
             }
         }
@@ -99,7 +101,7 @@ impl Bus8080 for InvadersBus
             }
             0x6 => { /* Watchdog does nothing for us. */ }
             _ => {
-                println!("[INFO]: Unhandled write {:02X} to device {:02X} on InvadersBus.", a, b);
+                // println!("[INFO]: Unhandled write {:02X} to device {:02X} on InvadersBus.", a, b);
             }
         }
     }

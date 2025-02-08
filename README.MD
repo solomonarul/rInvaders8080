@@ -4,6 +4,13 @@ Uses [r8080](https://github.com/solomonarul/r8080) as the base CPU.
 
 The main thread handles drawing to the screen and the rest is offset to a separate thread for the CPU.
 
+## Controls:
+
+- W - Shoot.
+- A, D - Move left / right.
+- Space - Insert coin.
+- 1 - First player button.
+
 ## Status:
 
 <p align="center">

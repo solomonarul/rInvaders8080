@@ -4,5 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+spin_sleep = { version = "1.3.0" }
 sdl3 = { version = "0", features = ["build-from-source"]}
 r8080 = { path = "../r8080/" }

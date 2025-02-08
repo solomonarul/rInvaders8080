@@ -2,7 +2,7 @@ mod utils;
 mod invaders_bus;
 
 use sdl3::{event::Event, keyboard::Keycode, pixels::Color, rect::Point};
-use std::{cell::RefCell, rc::Rc, sync::{Arc, RwLock}, thread, time::Duration};
+use std::{cell::RefCell, rc::Rc, sync::{Arc, RwLock}, thread};
 
 use invaders_bus::{InvadersBus, InvadersInputState};
 use r8080::{cpu::{Interpreter8080, CPU8080}, Bus8080};
@@ -14,7 +14,7 @@ fn main() {
     let video_subsystem = context.video().unwrap();
 
     // Create a window.
-    let window = video_subsystem.window("Space Invaders | Intel 8080", 224 * 3, 256 * 3)
+    let window = video_subsystem.window("Space Invaders | Intel 8080", 220 * 3, 256 * 3)
         .position_centered().build().unwrap();
 
     let mut canvas = window.into_canvas();
@@ -36,12 +36,23 @@ fn main() {
     // Create a thread for the CPU to run on.
     let shared_cpu = Arc::new(RwLock::new(cpu));
     let cpu_thread = thread::spawn({
+        let shared_bus = Arc::clone(&shared_bus);
         let shared_cpu = Arc::clone(&shared_cpu);
+        let spin_sleeper = spin_sleep::SpinSleeper::new(100_000).with_spin_strategy(spin_sleep::SpinStrategy::SpinLoopHint);
         move || {
+            println!("[INFO]: Emulation thread started.");
             loop {
                 let mut cpu = shared_cpu.write().unwrap();
+                let last_cycles = cpu.get_executed_cycles();
                 cpu.step();
-
+                let current_cycles = cpu.get_executed_cycles();
+                spin_sleeper.sleep_ns(((current_cycles - last_cycles) * 250) as u64);  // This assumes 2Mhz -> 500ns
+                if (current_cycles / 16667) % 3 == 1 && (current_cycles / 16667) % 3 != (last_cycles / 16667) % 3 {
+                    shared_bus.write().unwrap().push_interrupt(0xCF);
+                }
+                if (current_cycles / 16667) % 3 == 2 && (current_cycles / 16667) % 3 != (last_cycles / 16667) % 3 {
+                    shared_bus.write().unwrap().push_interrupt(0xD7);          
+                }
                 if !cpu.is_running() { break; }
             }
             println!("[INFO]: Emulation thread stopped.");
@@ -49,6 +60,7 @@ fn main() {
     });
 
     // App's main loop.
+    let spin_sleeper = spin_sleep::SpinSleeper::new(100_000).with_spin_strategy(spin_sleep::SpinStrategy::SpinLoopHint);
     let mut event_pump = context.event_pump().unwrap();
     'main: loop {
         // Forcefully quit the app if somehow our emulator finishes running.
@@ -62,23 +74,13 @@ fn main() {
 
         // Draw the output.
         {
-            for x in 0..224 {
-                // Interrupts based on scanline.
-                if x == 95 {
-                    let mut write_bus = shared_bus.write().unwrap();
-                    write_bus.push_interrupt(0xCF);
-                }
-                if x == 223 {
-                    let mut write_bus = shared_bus.write().unwrap();
-                    write_bus.push_interrupt(0xD7);               
-                }
-
+            for x in 0..220 {
                 let bus = shared_bus.read().unwrap();
                 for y in 0..256 {
                     // Color based on scanline.
                     match y {
                         34..=192 => { canvas.set_draw_color(Color::RGB(245, 100, 100)); }
-                        193..=235 => { canvas.set_draw_color(Color::RGB(100, 245, 100)); }
+                        193..=239 => { canvas.set_draw_color(Color::RGB(100, 245, 100)); }
                         _ => { canvas.set_draw_color(Color::RGB(225, 225, 245)); }
                     }
 
@@ -98,61 +100,52 @@ fn main() {
                 Event::Quit {..} |
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
                     break 'main
-                },
+                }
                 // Coin button.
                 Event::KeyDown { keycode: Some(Keycode::Space), .. } => {
                     let mut state = input_state.borrow_mut();
                     state.first |= 0b00000001;
-                },
+                }
                 // 1-P buttons.
                 Event::KeyDown { keycode: Some(Keycode::W), .. } => {
                     let mut state = input_state.borrow_mut();
                     state.first |= 0b00010000;
-                },
+                }
                 Event::KeyUp { keycode: Some(Keycode::W), .. } => {
                     let mut state = input_state.borrow_mut();
                     state.first &= 0b11101111;
-                }, 
+                }
                 Event::KeyDown { keycode: Some(Keycode::A), .. } => {
                     let mut state = input_state.borrow_mut();
                     state.first |= 0b00100000;
-                },
+                }
                 Event::KeyUp { keycode: Some(Keycode::A), .. } => {
                     let mut state = input_state.borrow_mut();
                     state.first &= 0b11011111;
-                },        
+                }    
                 Event::KeyDown { keycode: Some(Keycode::D), .. } => {
                     let mut state = input_state.borrow_mut();
                     state.first |= 0b01000000;
-                },
+                }
                 Event::KeyUp { keycode: Some(Keycode::D), .. } => {
                     let mut state = input_state.borrow_mut();
                     state.first &= 0b10111111;
-                },        
+                }  
                 // 1-P button.
                 Event::KeyDown { keycode: Some(Keycode::_1), .. } => {
                     let mut state = input_state.borrow_mut();
                     state.first |= 0b00000100;
-                },
+                }
                 Event::KeyUp { keycode: Some(Keycode::_1), .. } => {
                     let mut state = input_state.borrow_mut();
                     state.first &= 0b11111011;
-                },
-                // 2-P button.
-                Event::KeyDown { keycode: Some(Keycode::_2), .. } => {
-                    let mut state = input_state.borrow_mut();
-                    state.first |= 0b00000010;
-                },
-                Event::KeyUp { keycode: Some(Keycode::_2), .. } => {
-                    let mut state = input_state.borrow_mut();
-                    state.first &= 0b11111101;
-                },
+                }
                 _ => {}
             }
         }
 
         // Render less.
-        thread::sleep(Duration::new(0, 1_000_000_000u32 / 62));
+        spin_sleeper.sleep_s(1f64 / 60.0);
     }
 
     // Stop the CPU.
@@ -161,4 +154,5 @@ fn main() {
         cpu.stop();
     }
     cpu_thread.join().unwrap();
+    println!("[INFO]: Main thread stopped.");
 }

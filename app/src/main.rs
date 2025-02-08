@@ -40,7 +40,7 @@ fn main() {
     let cpu_thread = thread::spawn({
         let shared_bus = Arc::clone(&shared_bus);
         let shared_cpu = Arc::clone(&shared_cpu);
-        let spin_sleeper = spin_sleep::SpinSleeper::new(100_000).with_spin_strategy(spin_sleep::SpinStrategy::SpinLoopHint);
+        let spin_sleeper = spin_sleep::SpinSleeper::default();
         move || {
             println!("[INFO]: Emulation thread started.");
             loop {
@@ -48,11 +48,11 @@ fn main() {
                 let last_cycles = cpu.get_executed_cycles();
                 cpu.step();
                 let current_cycles = cpu.get_executed_cycles();
-                spin_sleeper.sleep_ns(((current_cycles - last_cycles) * 500) as u64);  // This assumes 2Mhz -> 500ns
-                if (current_cycles / 16640) % 2 == 0 && (current_cycles / 16640) % 2 != (last_cycles / 16640) % 2 {
+                spin_sleeper.sleep_ns(((current_cycles - last_cycles) * 500) as u64);  // This is 2Mhz -> 500ns
+                if (current_cycles / 16666) % 2 == 0 && (current_cycles / 16666) % 2 != (last_cycles / 16666) % 2 {
                     shared_bus.write().unwrap().push_interrupt(0xCF);
                 }
-                if (current_cycles / 16640) % 2 == 1 && (current_cycles / 16640) % 2 != (last_cycles / 16640) % 2 {
+                if (current_cycles / 16666) % 2 == 1 && (current_cycles / 16666) % 2 != (last_cycles / 16666) % 2 {
                     shared_bus.write().unwrap().push_interrupt(0xD7);          
                 }
                 if !cpu.is_running() { break; }
@@ -62,7 +62,7 @@ fn main() {
     });
 
     // App's main loop.
-    let spin_sleeper = spin_sleep::SpinSleeper::new(100_000).with_spin_strategy(spin_sleep::SpinStrategy::SpinLoopHint);
+    let spin_sleeper = spin_sleep::SpinSleeper::default();
     let mut event_pump = context.event_pump().unwrap();
     'main: loop {
         // Forcefully quit the app if somehow our emulator finishes running.
@@ -81,8 +81,10 @@ fn main() {
                 for y in 0..256 {
                     // Color based on scanline.
                     match y {
-                        34..=192 => { canvas.set_draw_color(Color::RGB(245, 100, 100)); }
+                        10..=34 => { canvas.set_draw_color(Color::RGB(245, 245, 150)); }
+                        35..=50 => { canvas.set_draw_color(Color::RGB(245, 100, 100)); }
                         193..=239 => { canvas.set_draw_color(Color::RGB(100, 245, 100)); }
+                        241..=255 => { canvas.set_draw_color(Color::RGB(100, 245, 100)); }
                         _ => { canvas.set_draw_color(Color::RGB(225, 225, 245)); }
                     }
 
@@ -147,7 +149,7 @@ fn main() {
         }
 
         // Render less.
-        spin_sleeper.sleep_s(1f64 / 62.0);
+        spin_sleeper.sleep_s(1f64 / 61.0);
     }
 
     // Stop the CPU.

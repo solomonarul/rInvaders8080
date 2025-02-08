@@ -1,3 +1,5 @@
+#![windows_subsystem = "windows"]
+
 mod utils;
 mod invaders_bus;
 

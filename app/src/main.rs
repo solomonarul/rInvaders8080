@@ -46,11 +46,11 @@ fn main() {
                 let last_cycles = cpu.get_executed_cycles();
                 cpu.step();
                 let current_cycles = cpu.get_executed_cycles();
-                spin_sleeper.sleep_ns(((current_cycles - last_cycles) * 250) as u64);  // This assumes 2Mhz -> 500ns
-                if (current_cycles / 16667) % 3 == 1 && (current_cycles / 16667) % 3 != (last_cycles / 16667) % 3 {
+                spin_sleeper.sleep_ns(((current_cycles - last_cycles) * 500) as u64);  // This assumes 2Mhz -> 500ns
+                if (current_cycles / 16640) % 2 == 0 && (current_cycles / 16640) % 2 != (last_cycles / 16640) % 2 {
                     shared_bus.write().unwrap().push_interrupt(0xCF);
                 }
-                if (current_cycles / 16667) % 3 == 2 && (current_cycles / 16667) % 3 != (last_cycles / 16667) % 3 {
+                if (current_cycles / 16640) % 2 == 1 && (current_cycles / 16640) % 2 != (last_cycles / 16640) % 2 {
                     shared_bus.write().unwrap().push_interrupt(0xD7);          
                 }
                 if !cpu.is_running() { break; }
@@ -145,7 +145,7 @@ fn main() {
         }
 
         // Render less.
-        spin_sleeper.sleep_s(1f64 / 60.0);
+        spin_sleeper.sleep_s(1f64 / 62.0);
     }
 
     // Stop the CPU.

@@ -14,11 +14,7 @@ The main thread handles drawing to the screen and the rest is offset to a separa
 ## Status:
 
 <p align="center">
-    <img src=".github/splash.png"/>
-</p>
-
-<p align="center">
-    <img src=".github/latest.png"/>
+    <img src=".github/latest.gif"/>
 </p>
 
 ---

@@ -4,7 +4,3 @@
 - invaders.f
 - invaders.g
 - invaders.h
-
-## Sound files (optional):
-
-- invaderkilled.wav

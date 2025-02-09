@@ -45,7 +45,7 @@ fn main() {
             println!("[INFO]: Emulation thread started.");
             'main: loop {
                 let mut count = 0f64;
-                while count < 1f64 / 120.0 {
+                while count < 1f64 / 66.0 {
                     let mut cpu = shared_cpu.write().unwrap();
                     let last_cycles = cpu.get_executed_cycles();
                     cpu.step();
@@ -59,7 +59,7 @@ fn main() {
                     if !cpu.is_running() { break 'main; }
                     count += ((current_cycles - last_cycles) as f64) / 2000000.0
                 }
-                spin_sleeper.sleep_s(1f64 / 120.0);
+                spin_sleeper.sleep_s(1f64 / 66.0);
             }
             println!("[INFO]: Emulation thread stopped.");
         }

@@ -86,11 +86,15 @@ fn main() {
                 point.y = 0;
                 while point.y < 255 {
                     match point.y {
-                        10..=34 => { canvas.set_draw_color(Color::RGB(245, 245, 150)); }
+                        10..=34 => { canvas.set_draw_color(Color::RGB(210, 210, 230)); }
                         35..=50 => { canvas.set_draw_color(Color::RGB(245, 100, 100)); }
-                        193..=239 => { canvas.set_draw_color(Color::RGB(100, 245, 100)); }
-                        241..=255 => { canvas.set_draw_color(Color::RGB(100, 245, 100)); }
-                        _ => { canvas.set_draw_color(Color::RGB(225, 225, 245)); }
+                        193..=224 => { canvas.set_draw_color(Color::RGB(100, 200, 100)); }
+                        225..=239 => { canvas.set_draw_color(Color::RGB(245, 100, 100)); }
+                        241..=255 => {
+                            if point.x > 15 && point.x < 110 { canvas.set_draw_color(Color::RGB(100, 200, 100)); }
+                            else { canvas.set_draw_color(Color::RGB(225, 225, 255)); }
+                        }
+                        _ => { canvas.set_draw_color(Color::RGB(225, 225, 255)); }
                     }
 
                     let position = point.x * 256 + (256 - point.y);

@@ -21,7 +21,7 @@ pub struct InvadersBus
 impl InvadersBus
 {
     pub fn new(inputs: Rc<RefCell<InvadersInputState>>) -> Self {
-        Self {
+        let result = Self {
             rom: [0x00; 0x2000],
             ram: [0x00; 0x400],
             vram: [0x00; 0x1C00],
@@ -29,7 +29,8 @@ impl InvadersBus
             offset: 0x00,
             interrupts: VecDeque::new(),
             inputs
-        }
+        };
+        result
     }
 
     fn write_b_unrestricted(&mut self, a: u16, b: u8) {

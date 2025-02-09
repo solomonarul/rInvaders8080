@@ -1,4 +1,4 @@
-#![windows_subsystem = "windows"]
+// #![windows_subsystem = "windows"]
 
 mod utils;
 mod invaders_bus;
@@ -16,7 +16,7 @@ fn main() {
     let video_subsystem = context.video().unwrap();
 
     // Create a window.
-    let window = video_subsystem.window("Space Invaders | Intel 8080", 220 * 3, 256 * 3)
+    let window = video_subsystem.window("Space Invaders | Intel 8080", 220 * 3, 255 * 3)
         .position_centered().build().unwrap();
 
     let mut canvas = window.into_canvas();
@@ -43,19 +43,23 @@ fn main() {
         let spin_sleeper = spin_sleep::SpinSleeper::default();
         move || {
             println!("[INFO]: Emulation thread started.");
-            loop {
-                let mut cpu = shared_cpu.write().unwrap();
-                let last_cycles = cpu.get_executed_cycles();
-                cpu.step();
-                let current_cycles = cpu.get_executed_cycles();
-                spin_sleeper.sleep_ns(((current_cycles - last_cycles) * 500) as u64);  // This is 2Mhz -> 500ns
-                if (current_cycles / 16666) % 2 == 0 && (current_cycles / 16666) % 2 != (last_cycles / 16666) % 2 {
-                    shared_bus.write().unwrap().push_interrupt(0xCF);
+            'main: loop {
+                let mut count = 0f64;
+                while count < 1f64 / 120.0 {
+                    let mut cpu = shared_cpu.write().unwrap();
+                    let last_cycles = cpu.get_executed_cycles();
+                    cpu.step();
+                    let current_cycles = cpu.get_executed_cycles();
+                    if (current_cycles / 16666) % 2 == 0 && (current_cycles / 16666) % 2 != (last_cycles / 16666) % 2 {
+                        shared_bus.write().unwrap().push_interrupt(0xCF);
+                    }
+                    if (current_cycles / 16666) % 2 == 1 && (current_cycles / 16666) % 2 != (last_cycles / 16666) % 2 {
+                        shared_bus.write().unwrap().push_interrupt(0xD7);          
+                    }
+                    if !cpu.is_running() { break 'main; }
+                    count += ((current_cycles - last_cycles) as f64) / 2000000.0
                 }
-                if (current_cycles / 16666) % 2 == 1 && (current_cycles / 16666) % 2 != (last_cycles / 16666) % 2 {
-                    shared_bus.write().unwrap().push_interrupt(0xD7);          
-                }
-                if !cpu.is_running() { break; }
+                spin_sleeper.sleep_s(1f64 / 120.0);
             }
             println!("[INFO]: Emulation thread stopped.");
         }
@@ -76,11 +80,12 @@ fn main() {
 
         // Draw the output.
         {
-            for x in 0..220 {
-                let bus = shared_bus.read().unwrap();
-                for y in 0..256 {
-                    // Color based on scanline.
-                    match y {
+            let mut point = Point::new(0, 0);
+            let bus = shared_bus.read().unwrap();
+            while point.x < 220 {
+                point.y = 0;
+                while point.y < 255 {
+                    match point.y {
                         10..=34 => { canvas.set_draw_color(Color::RGB(245, 245, 150)); }
                         35..=50 => { canvas.set_draw_color(Color::RGB(245, 100, 100)); }
                         193..=239 => { canvas.set_draw_color(Color::RGB(100, 245, 100)); }
@@ -88,12 +93,14 @@ fn main() {
                         _ => { canvas.set_draw_color(Color::RGB(225, 225, 245)); }
                     }
 
-                    let position = x * 256 + (256 - y);
-                    let pixel = bus.read_b(0x2400 + position / 8) & (1 << (position % 8));
+                    let position = point.x * 256 + (256 - point.y);
+                    let pixel = bus.read_b((0x2400 + position / 8) as u16) & (1 << (position % 8));
                     if pixel != 0 {
-                        canvas.draw_point(Point::new(x as i32, y as i32)).unwrap();
+                        canvas.draw_point(point).unwrap();
                     }
+                    point.y += 1;
                 }
+                point.x += 1;
             }
             canvas.present();
         }
@@ -149,7 +156,7 @@ fn main() {
         }
 
         // Render less.
-        spin_sleeper.sleep_s(1f64 / 61.0);
+        spin_sleeper.sleep_s(1f64 / 60.0);
     }
 
     // Stop the CPU.

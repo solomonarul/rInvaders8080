@@ -44,32 +44,44 @@ fn main() {
         move || {
             println!("[INFO]: Emulation thread started.");
             'main: loop {
-                let mut count = 0f64;
-                while count < 1f64 / 66.0 {
+                let cpu_freq = 2000000;
+                let cycles_per_vblank = (cpu_freq / 60) / 2;
+                let mut timer = 0f64;
+
+                // Just a bit faster than the screen.
+                let refresh_rate = 1f64 / 90.0;
+                while timer < refresh_rate {
+                    // CPU catching up.
                     let mut cpu = shared_cpu.write().unwrap();
                     let last_cycles = cpu.get_executed_cycles();
                     cpu.step();
                     let current_cycles = cpu.get_executed_cycles();
-                    if (current_cycles / 16666) % 2 == 0 && (current_cycles / 16666) % 2 != (last_cycles / 16666) % 2 {
+                    timer += ((current_cycles - last_cycles) as f64) / cpu_freq as f64;
+                    
+                    // Interrupt handling per half vblank.
+                    let current_vblanks = current_cycles / cycles_per_vblank;
+                    let last_vblanks = last_cycles / cycles_per_vblank;
+                    if current_vblanks % 2 == 0 && current_vblanks % 2 != last_vblanks % 2 {
                         shared_bus.write().unwrap().push_interrupt(0xCF);
                     }
-                    if (current_cycles / 16666) % 2 == 1 && (current_cycles / 16666) % 2 != (last_cycles / 16666) % 2 {
-                        shared_bus.write().unwrap().push_interrupt(0xD7);          
+                    if current_vblanks % 2 == 1 && current_vblanks % 2 != last_vblanks % 2 {
+                        shared_bus.write().unwrap().push_interrupt(0xD7);        
                     }
+                    
+                    // If we are not running, stop this thread.
                     if !cpu.is_running() { break 'main; }
-                    count += ((current_cycles - last_cycles) as f64) / 2000000.0
                 }
-                spin_sleeper.sleep_s(1f64 / 66.0);
+                spin_sleeper.sleep_s(refresh_rate);
             }
             println!("[INFO]: Emulation thread stopped.");
         }
     });
 
     // App's main loop.
-    let spin_sleeper = spin_sleep::SpinSleeper::default();
     let mut event_pump = context.event_pump().unwrap();
+    let spin_sleeper = spin_sleep::SpinSleeper::default();
     'main: loop {
-        // Forcefully quit the app if somehow our emulator finishes running.
+        // Forcefully quit the app if somehow our emulator finishes running before this thread.
         if cpu_thread.is_finished() {
             break 'main
         }
@@ -83,18 +95,20 @@ fn main() {
             let mut point = Point::new(0, 0);
             let bus = shared_bus.read().unwrap();
             while point.x < 220 {
-                point.y = 0;
+                point.y = 0;    // Keep in mind that when displayed, the screen is rotated.
+                // Scanline matching.
                 while point.y < 255 {
+                    // Match the colors per area.
                     match point.y {
-                        10..=34 => { canvas.set_draw_color(Color::RGB(210, 210, 230)); }
-                        35..=50 => { canvas.set_draw_color(Color::RGB(245, 100, 100)); }
-                        193..=224 => { canvas.set_draw_color(Color::RGB(100, 200, 100)); }
-                        225..=239 => { canvas.set_draw_color(Color::RGB(245, 100, 100)); }
+                        10..=34 => { canvas.set_draw_color(Color::RGB(210, 210, 230)); }                            // Upper light gray.
+                        35..=50 => { canvas.set_draw_color(Color::RGB(245, 100, 100)); }                            // Upper red.
+                        193..=224 => { canvas.set_draw_color(Color::RGB(100, 200, 100)); }                          // Lower-mid green.
+                        225..=239 => { canvas.set_draw_color(Color::RGB(245, 100, 100)); }                          // Lower red.
                         241..=255 => {
-                            if point.x > 15 && point.x < 110 { canvas.set_draw_color(Color::RGB(100, 200, 100)); }
+                            if point.x > 15 && point.x < 110 { canvas.set_draw_color(Color::RGB(100, 200, 100)); }  // Lower green.
                             else { canvas.set_draw_color(Color::RGB(225, 225, 255)); }
                         }
-                        _ => { canvas.set_draw_color(Color::RGB(225, 225, 255)); }
+                        _ => { canvas.set_draw_color(Color::RGB(225, 225, 255)); }                                  // Normal white.
                     }
 
                     let position = point.x * 256 + (256 - point.y);
@@ -159,11 +173,11 @@ fn main() {
             }
         }
 
-        // Render less.
+        // Render thread matching.
         spin_sleeper.sleep_s(1f64 / 60.0);
     }
 
-    // Stop the CPU.
+    // Stop the CPU thread, app is done.
     {
         let mut cpu = shared_cpu.write().unwrap();
         cpu.stop();

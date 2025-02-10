@@ -13,6 +13,8 @@ The main thread handles drawing to the screen and the rest is offset to a separa
 
 ## Status:
 
+- TODO: add sounds, maybe?
+
 <p align="center">
     <img src=".github/latest.gif"/>
 </p>

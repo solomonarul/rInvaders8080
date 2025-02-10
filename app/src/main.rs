@@ -1,9 +1,9 @@
-// #![windows_subsystem = "windows"]
+#![windows_subsystem = "windows"]
 
 mod utils;
 mod invaders_bus;
 
-use sdl3::{event::Event, keyboard::Keycode, pixels::Color, rect::Point};
+use sdl3::{event::Event, keyboard::Keycode, messagebox::MessageBoxFlag, pixels::Color, rect::Point};
 use std::{cell::RefCell, rc::Rc, sync::{Arc, RwLock}, thread};
 
 use invaders_bus::{InvadersBus, InvadersInputState};
@@ -25,10 +25,16 @@ fn main() {
     // Read the ROM data into the bus and prepare the inputs.
     let input_state = Rc::new(RefCell::new(InvadersInputState{ first: 0x00, second: 0x00 }));
     let mut invaders_bus = Box::new(InvadersBus::new(input_state.clone())) as Box<dyn Bus8080>;
-    invaders_bus.write_buffer(0x0000, read_file_to_vec("roms/invaders.h"));
-    invaders_bus.write_buffer(0x0800, read_file_to_vec("roms/invaders.g"));
-    invaders_bus.write_buffer(0x1000, read_file_to_vec("roms/invaders.f"));
-    invaders_bus.write_buffer(0x1800, read_file_to_vec("roms/invaders.e"));
+    let rom_data = [(0x0000, "roms/invaders.h"), (0x0800, "roms/invaders.g"), (0x1000, "roms/invaders.f"), (0x1800, "roms/invaders.e")];
+    for rom in rom_data {
+        let read_result = read_file_to_vec(rom.1);
+        if read_result.is_err() {
+            println!("[EROR]: Couldn't find ROM at path: {}", rom.1);
+            sdl3::messagebox::show_simple_message_box(MessageBoxFlag::ERROR, "Error!", format!("Couldn't find ROM at path: {}", rom.1).as_str(), None).unwrap();
+            return;
+        }
+        invaders_bus.write_buffer(rom.0, read_result.unwrap());
+    }
 
     // Create the CPU and attach the Bus.
     let shared_bus = Arc::new(RwLock::new(invaders_bus));
